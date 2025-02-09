@@ -329,7 +329,7 @@ def override_activation(model, activation_name):
 # ============================================================
 # 5. Training function.
 # ============================================================
-def train_model(activation_name="gelu", run_name="gelu", max_steps=100000, logging_steps=200, eval_interval=50, batch_size=1, num_layers=48):
+def train_model(activation_name="gelu", run_name="gelu", max_steps=100000, logging_steps=200, eval_interval=50, batch_size=8, num_layers=48):
     # Set up model, tokenizer, and activation replacement.
     config = GPT2Config(
         n_embd=1600,
@@ -513,7 +513,7 @@ if __name__ == '__main__':
     parser.add_argument("--eval_interval", type=int, default=100,
                         help="Evaluation interval (default: 100)")
     parser.add_argument("--batch_size", type=int, default=1,
-                        help="Batch size (default: 4)")
+                        help="Batch size (default: 1)")
     parser.add_argument("--num_layers", type=int, default=48,
                         help="Number of layers in the model (default: 48)")
     parser.add_argument("--plot_only", action="store_true",
