@@ -66,14 +66,14 @@ A custom autograd function performs a stochastic gating. In the forward pass, fo
 
 Key findings from our experiments include:
 
-- **Activation Behavior:**  
-  Zero (or dead) neurons are most prevalent with ReLU, while vector-based activations rarely force activations exactly to zero.
-  
+- **Gradient Flow:**  
+  In very deep networks, gradients tend to vanish in early layers with standard activations. With vecgelu, gradient magnitudes start high at the output layers and then become more balanced across layers as training progresses, in a way that doesn't happen for GeLU.
+
 - **Activation Norms:**  
   The average activation (i.e. the norm) remains essentially constant during training and is largely determined by the activation function. For vecgelu, the average norm of the activation vectors are sensitive to the weight initialization, but if the weights are scaled so that there the norm is moderately close to the vecgelu cutoff, then the model will learn to create activation norms that are at the vecgelu cutoff. 
 
-- **Gradient Flow:**  
-  In very deep networks, gradients tend to vanish in early layers with standard activations. With vecgelu, gradient magnitudes start high at the output layers and then become more balanced across layers as training progresses.
+- **Activation Behavior:**  
+  Zero (or dead) neurons are most prevalent with ReLU, while vector-based activations rarely force activations exactly to zero.
 
 ## How to Run
 
