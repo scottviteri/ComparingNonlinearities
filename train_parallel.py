@@ -345,7 +345,7 @@ def train_model(activation_name="gelu", run_name="gelu", max_steps=100000, loggi
     if 'vec' in activation_name.lower():
         for param in model.parameters():
             if isinstance(param, torch.nn.Parameter):
-                param.data *= 1.7
+                param.data *= 1.1
                 
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
@@ -380,7 +380,7 @@ def train_model(activation_name="gelu", run_name="gelu", max_steps=100000, loggi
     eval_loader = DataLoader(eval_dataset, batch_size=32, shuffle=False, collate_fn=data_collator)
 
     # Set up optimizer.
-    optimizer = AdamW(model.parameters(), lr=5e-4, weight_decay=0.01)
+    optimizer = AdamW(model.parameters(), lr=1e-5, weight_decay=0.01)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -604,7 +604,7 @@ if __name__ == '__main__':
     else:
          # 6. Run training experiments in parallel.
          # "trainable_erf" is commented out by default. To include it, add it to the list.
-         selected_variants = ["gelu", "vecgelu"]
+         selected_variants = ["vecgelu"]
          log_histories = {}
          metrics_logs = {}
          with ProcessPoolExecutor(max_workers=len(selected_variants), mp_context=multiprocessing.get_context("spawn")) as executor:

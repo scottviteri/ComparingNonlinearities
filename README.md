@@ -10,3 +10,10 @@
 # 75% of neurons don't receive 
 
 What if we make this much deeper and decrease batch size accordingly
+
+Gradient norms start at end layers
+Then get higher in previous layers over course of training
+vecgelu activation norm flattens out
+Gelu gradient stuck in final layers
+Vecgelu has relatively even gradient magnitude, high at beginning layer and decreases
+  gets more even over run
