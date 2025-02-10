@@ -5,7 +5,7 @@ _A Vector-Based Activation Function for Deep Networks_
 
 In many deep neural networks, activations are applied elementwise. A well-known example is GELU, defined for a scalar input x as
 
-  GELU(x) = x · Φ(x)    (or approximately x · tanh(√(2⁄π) · (x + 0.044715·x³)))
+  ![](readme_images/gelu.png) or approximately ![](readme_images/approx.png),
 
 where Φ(x) is the Gaussian cumulative distribution function (CDF). However, in most networks the activations form high-dimensional vectors rather than independent scalars. The **Vector GELU (vecgelu)** activation function generalizes GELU by operating on entire vectors. It scales a vector v ∈ ℝᵈ by a factor that depends on its Euclidean norm ∥v∥, thereby taking into account the joint behavior of the neurons.
 
@@ -25,22 +25,24 @@ where Φ(x) is the Gaussian cumulative distribution function (CDF). However, in 
   - The overall weight norm tends to increase over time.
   - Training loss remains relatively consistent across different activations.
   - Average activations are nearly constant and are a function of the chosen activation.
-  - Among the tested functions, the ranking by performance was roughly: ReLU > GELU > SiLU > trainable_erf > vecgelu.
   - Vector-based activations like vecgelu produce very small average activations while still delivering balanced gradients throughout the network.
 
 ### Derivation
 
 For an activation vector v ∈ ℝᵈ, let r = ∥v∥. We define a scaling probability p by interpreting r as a threshold for a stochastic gating mechanism. In particular, assume that a d-dimensional standard Gaussian noise vector z is sampled. The probability that ∥z∥ ≤ r is given by
 
-  p = (1/Γ(d⁄2)) ∫₀^(r²⁄2) t^(d⁄2 – 1) e^(–t) dt.
+ ![](readme_images/prob.png).
 
-This expression is exactly the normalized (regularized) lower incomplete gamma function evaluated at x = r²⁄2 with parameter a = d⁄2. Notice that when d = 1 this simplifies to
+This expression is exactly the normalized (regularized) lower incomplete gamma function evaluated at x = r²⁄2 with parameter a = d⁄2:
+![](readme_images/reg_incomplete_gamma.png) 
 
-  p = erf(r⁄√2).
+Notice that when d = 1 this simplifies to
+
+  ![](readme_images/d1.png).
 
 Thus, vecgelu generalizes the scalar GELU to higher dimensions by defining
 
-  VecGELU(v) = v · p = v · [γ(d⁄2, r²⁄2)⁄Γ(d⁄2)].
+  ![](readme_images/vecgelu.png).
 
 A stochastic variant can also be derived, where a binary mask is sampled using p and multiplied with v, and the backward pass uses a surrogate gradient proportional to p.
 
@@ -52,7 +54,7 @@ Two implementations are provided in the repository:
 
 For inputs such as 4D feature maps, the module first divides the input into small subblocks (e.g. 4×4), flattens each subblock into a vector, computes its norm r, and then scales the vector by
 
-  scale = torch.special.gammainc(a, (r²)/2)
+  ![](readme_images/gammainc.png)
 
 with a = d⁄2 (where d is the vector dimension). Finally, the scaled subblocks are reshaped back into the original dimensions.
 
@@ -72,9 +74,6 @@ Key findings from our experiments include:
 
 - **Gradient Flow:**  
   In very deep networks, gradients tend to vanish in early layers with standard activations. With vecgelu, gradient magnitudes start high at the output layers and then become more balanced across layers as training progresses.
-  
-- **Comparative Performance:**  
-  Training loss is roughly consistent across activation functions, but the internal statistics (activation norms, weight norms, gradient magnitudes) vary. Our experiments suggest the following ordering (from highest average activation to lowest): ReLU > GELU > SiLU > trainable_erf > vecgelu.
 
 ## How to Run
 
@@ -101,10 +100,6 @@ python train_parallel.py --num_layers 20
 ```
 
 This command spawns two processes: one using standard GELU and one using VectorGELUActivation (vecgelu).
-
-## Rendering Mathematical Expressions on GitHub
-
-GitHub READMEs do not natively render LaTeX math. This document uses Unicode symbols (e.g. ∥, →, Γ, ∫) to express mathematical formulas. For richer math rendering, you might consider using GitHub Pages with MathJax/KaTeX or embedding images generated externally.
 
 ## Conclusion
 
