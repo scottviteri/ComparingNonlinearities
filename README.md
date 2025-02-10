@@ -5,7 +5,7 @@ _A Vector-Based Activation Function for Deep Networks_
 
 In many deep neural networks, activations are applied elementwise. A well-known example is GELU, defined for a scalar input x as
 
-  ![](readme_images/gelu.png) or approximately ![](readme_images/approx.png),
+  ![](readme_images/both.png)
 
 where Φ(x) is the Gaussian cumulative distribution function (CDF). However, in most networks the activations form high-dimensional vectors rather than independent scalars. The **Vector GELU (vecgelu)** activation function generalizes GELU by operating on entire vectors. It scales a vector v ∈ ℝᵈ by a factor that depends on its Euclidean norm ∥v∥, thereby taking into account the joint behavior of the neurons.
 
@@ -70,7 +70,7 @@ Key findings from our experiments include:
   Zero (or dead) neurons are most prevalent with ReLU, while vector-based activations rarely force activations exactly to zero.
   
 - **Activation Norms:**  
-  The average activation (i.e. the norm) remains essentially constant during training and is largely determined by the activation function. For vecgelu, average activation is very small.
+  The average activation (i.e. the norm) remains essentially constant during training and is largely determined by the activation function. For vecgelu, the average norm of the activation vectors are sensitive to the weight initialization, but if the weights are scaled so that there the norm is moderately close to the vecgelu cutoff, then the model will learn to create activation norms that are at the vecgelu cutoff. 
 
 - **Gradient Flow:**  
   In very deep networks, gradients tend to vanish in early layers with standard activations. With vecgelu, gradient magnitudes start high at the output layers and then become more balanced across layers as training progresses.
