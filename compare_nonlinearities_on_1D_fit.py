@@ -240,7 +240,7 @@ class LearnedActivation(nn.Module):
         self.fc3 = nn.Linear(hidden_size, hidden_size)
         self.fc4 = nn.Linear(hidden_size, hidden_size)
         self.fc5 = nn.Linear(hidden_size, 1)
-        self.relu = nn.GELU()
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         # Apply the learned activation elementwise.
