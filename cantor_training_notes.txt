@@ -1,0 +1,6 @@
+batch size is definitely helping (batch size 2000 lol)
+also bringing the learning rate down
+Silu as actually outperforming
+Silu > gelu > relu
+
+The representation of numbers going in is causing a decent amount of the difficulty, since it has to come up with a reasonable one and deconstruct it in its few number of layers
