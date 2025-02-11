@@ -4,3 +4,5 @@ Silu as actually outperforming
 Silu > gelu > relu
 
 The representation of numbers going in is causing a decent amount of the difficulty, since it has to come up with a reasonable one and deconstruct it in its few number of layers
+Working well:
+python multi_function_learned_activation.py --steps 500000 --batch_size 128 --x_range -5 5 --activation_range -2 2  

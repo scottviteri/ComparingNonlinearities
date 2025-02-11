@@ -238,9 +238,33 @@ class LearnedActivation(nn.Module):
         self.fc1 = nn.Linear(1, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, hidden_size)
-        self.fc4 = nn.Linear(hidden_size, hidden_size)
-        self.fc5 = nn.Linear(hidden_size, 1)
+        self.fc4 = nn.Linear(hidden_size, 1)
         self.relu = nn.ReLU()
+
+        # Initialize fc1 to copy input: output = x*1 for every neuron.
+        nn.init.constant_(self.fc1.weight, 1.0)
+        nn.init.constant_(self.fc1.bias, 0.0)
+        # Add epsilon perturbation to fc1 weights.
+        with torch.no_grad():
+            self.fc1.weight.add_(1e-3 * torch.randn_like(self.fc1.weight))
+
+        # Initialize fc2 as the identity.
+        with torch.no_grad():
+            self.fc2.weight.copy_(torch.eye(hidden_size))
+            self.fc2.weight.add_(1e-3 * torch.randn_like(self.fc2.weight))
+        nn.init.constant_(self.fc2.bias, 0.0)
+
+        # Initialize fc3 as the identity.
+        with torch.no_grad():
+            self.fc3.weight.copy_(torch.eye(hidden_size))
+            self.fc3.weight.add_(1e-3 * torch.randn_like(self.fc3.weight))
+        nn.init.constant_(self.fc3.bias, 0.0)
+
+        # Initialize fc4 to average the inputs: each weight set to 1/hidden_size.
+        with torch.no_grad():
+            self.fc4.weight.copy_(torch.ones(1, hidden_size) / hidden_size)
+            self.fc4.weight.add_(1e-3 * torch.randn_like(self.fc4.weight))
+        nn.init.constant_(self.fc4.bias, 0.0)
 
     def forward(self, x):
         # Apply the learned activation elementwise.
@@ -254,10 +278,9 @@ class LearnedActivation(nn.Module):
         out = self.fc3(out)
         out = self.relu(out)
         out = self.fc4(out)
-        out = self.relu(out)
-        out = self.fc5(out)
         # Restore the original shape.
         return out.view(orig_shape)
+
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     
