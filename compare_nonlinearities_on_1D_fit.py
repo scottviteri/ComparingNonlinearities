@@ -295,6 +295,14 @@ def main(args):
         nets[act_name] = net
         optimizers[act_name] = optim.Adam(net.parameters(), lr=args.lr)
     
+    # If requested, load the previously saved learned activation weights.
+    if "LearnedActivation" in nets and args.load_learned_activation:
+         if os.path.exists(args.learned_activation_file):
+             nets["LearnedActivation"].load_state_dict(torch.load(args.learned_activation_file))
+             print(f"Loaded LearnedActivation weights from {args.learned_activation_file}")
+         else:
+             print(f"Warning: {args.learned_activation_file} not found. Starting with random initialization for LearnedActivation.")
+
     # Initialize predictions history to store updates for re-drawing.
     predictions_history = {name: [] for name in nets}
     # For LearnedActivation, also keep a history of its learned activation snapshots.
@@ -309,7 +317,7 @@ def main(args):
     os.makedirs("fit_1D_plots", exist_ok=True)
 
     # Plot the true function once on each subplot.
-    x_plot_init = torch.linspace(-args.x, args.x, args.num_plot_points).unsqueeze(1).to(device)
+    x_plot_init = torch.linspace(args.x_range[0], args.x_range[1], args.num_plot_points).unsqueeze(1).to(device)
     y_true_init = target_function(x_plot_init, args.generation).cpu().detach().numpy()
     for ax in axs:
         ax.plot(x_plot_init.cpu().numpy(), y_true_init, label="True function", color="black", linewidth=2)
@@ -359,7 +367,7 @@ def main(args):
             # Update plots periodically.
             if step % args.plot_interval == 0:
                 # Create a grid of x values for plotting.
-                x_plot = torch.linspace(-args.x, args.x, args.num_plot_points).unsqueeze(1).to(device)
+                x_plot = torch.linspace(args.x_range[0], args.x_range[1], args.num_plot_points).unsqueeze(1).to(device)
                 # For each network, compute prediction and store in history.
                 for act_name, net in nets.items():
                     net.eval()
@@ -381,10 +389,13 @@ def main(args):
                             learned_act_instance = module
                             break
                     if learned_act_instance is not None:
-                        x_act_temp = torch.linspace(args.activation_min, args.activation_max, args.num_plot_points).unsqueeze(1).to(device)
+                        x_act = torch.linspace(args.activation_range[0], args.activation_range[1], args.num_plot_points).unsqueeze(1).to(device)
                         with torch.no_grad():
-                            y_act_current = learned_act_instance(x_act_temp).cpu().detach().numpy()
+                            y_act_current = learned_act_instance(x_act).cpu().detach().numpy()
                         learned_activation_history["LearnedActivation"].append((step, y_act_current))
+
+                        # Save (overwrite) the current weights to file.
+                        torch.save(nets["LearnedActivation"].state_dict(), args.learned_activation_file)
 
                 # Compute the global maximum L2 error across all activations for a common y-range.
                 global_max = 0
@@ -414,7 +425,7 @@ def main(args):
                     
                     # --- Plot the activation function (in the next column) ---
                     ax_act = axs_new[i, 1]
-                    x_act = torch.linspace(args.activation_min, args.activation_max, args.num_plot_points).unsqueeze(1).to(device)
+                    x_act = torch.linspace(args.activation_range[0], args.activation_range[1], args.num_plot_points).unsqueeze(1).to(device)
                     if act_name == "LearnedActivation":
                         # Extract the learned activation instance from the trained network.
                         learned_act_instance = None
@@ -426,10 +437,11 @@ def main(args):
                             learned_act_instance = activation_functions[act_name]().to(device)
                         with torch.no_grad():
                             y_act = learned_act_instance(x_act).cpu().detach().numpy()
-                        ax_act.plot(x_act.cpu().numpy(), y_act, label=f"{act_name} Activation (current)",
+                        # Plot without any label so no legend key is shown.
+                        ax_act.plot(x_act.cpu().numpy(), y_act,
                                     color=colors.get(act_name, "green"), linewidth=2)
 
-                        # Plot historical learned activation snapshots using a faded Greys colormap.
+                        # Plot historical learned activation snapshots using a faded Greys colormap (without labels).
                         import matplotlib.cm as cm
                         cmap = cm.get_cmap("Greys")
                         events = learned_activation_history.get("LearnedActivation", [])
@@ -437,7 +449,7 @@ def main(args):
                         for idx, (s, hist_y) in enumerate(events):
                             norm_val = (idx + 1) / n_events  # older snapshots are lighter
                             color_event = cmap(norm_val)
-                            ax_act.plot(x_act.cpu().numpy(), hist_y, label=f"Snapshot {s}",
+                            ax_act.plot(x_act.cpu().numpy(), hist_y,
                                         color=color_event, linestyle="--", linewidth=1)
                     else:
                         act_instance = activation_functions[act_name]().to(device)
@@ -446,8 +458,8 @@ def main(args):
                         ax_act.plot(x_act.cpu().numpy(), y_act, label=f"{act_name} Activation",
                                     color=colors.get(act_name, "green"), linewidth=2)
 
-                    ax_act.axhline(y=0, color='gray', linestyle='dotted')
                     ax_act.axvline(x=0, color='gray', linestyle='dotted')
+                    ax_act.set_ylim(args.activation_range[0], args.activation_range[1])
                     ax_act.set_title(f"{act_name} Activation")
                     ax_act.legend(fontsize='x-small')
                     
@@ -466,6 +478,37 @@ def main(args):
                 fig_new.tight_layout()
                 fig_new.savefig("fit_1D_plots/fit.png")
                 plt.close(fig_new)
+
+                # Additionally, save a separate plot for the LearnedActivation activation function.
+                if "LearnedActivation" in nets:
+                    fig_la, ax_la = plt.subplots(figsize=(6, 4))
+                    x_act = torch.linspace(args.activation_range[0], args.activation_range[1], args.num_plot_points).unsqueeze(1).to(device)
+                    learned_act_instance = None
+                    for module in nets["LearnedActivation"].modules():
+                        if isinstance(module, LearnedActivation):
+                            learned_act_instance = module
+                            break
+                    if learned_act_instance is None:
+                        learned_act_instance = activation_functions["LearnedActivation"]().to(device)
+                    with torch.no_grad():
+                        y_act = learned_act_instance(x_act).cpu().detach().numpy()
+                    ax_la.plot(x_act.cpu().numpy(), y_act,
+                              color=colors.get("LearnedActivation", "green"), linewidth=2)
+                    import matplotlib.cm as cm
+                    cmap = cm.get_cmap("Greys")
+                    events = learned_activation_history.get("LearnedActivation", [])
+                    n_events = len(events)
+                    for idx, (s, hist_y) in enumerate(events):
+                        norm_val = (idx + 1) / n_events
+                        color_event = cmap(norm_val)
+                        ax_la.plot(x_act.cpu().numpy(), hist_y,
+                                  color=color_event, linestyle="--", linewidth=1)
+                    ax_la.axvline(x=0, color='gray', linestyle='dotted')
+                    ax_la.set_ylim(args.activation_range[0], args.activation_range[1])
+                    ax_la.set_title("LearnedActivation Activation")
+                    fig_la.tight_layout()
+                    fig_la.savefig("fit_1D_plots/learned_activation_plot.png")
+                    plt.close(fig_la)
     if args.profile:
         print(prof.key_averages().table(sort_by="self_cuda_time_total"))
 
@@ -487,8 +530,8 @@ if __name__ == "__main__":
                         help="Number of steps between plot updates.")
     parser.add_argument("--num_plot_points", type=int, default=1000,
                         help="Number of points for plotting the function.")
-    parser.add_argument("--x", type=float, default=1.0,
-                        help="Fitting interval will be (-x, x).")
+    parser.add_argument("--x_range", type=float, nargs=2, default=[-1.0, 1.0],
+                        help="Lower and upper limits for training data fitting interval.")
     parser.add_argument("--no_cuda", action="store_true",
                         help="Disable CUDA.")
     parser.add_argument("--use_complex", action="store_true",
@@ -501,14 +544,11 @@ if __name__ == "__main__":
                         help="Profile the training loop using PyTorch's autograd profiler.")
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug checks for sampling procedures (checks to verify that samples are correct).")
-    parser.add_argument("--activation_min", type=float, default=-2.0,
-                        help="Minimum x value for the activation plot.")
-    parser.add_argument("--activation_max", type=float, default=2.0,
-                        help="Maximum x value for the activation plot.")
-    parser.add_argument("--activation_x", type=float, default=None,
-                        help="If provided, overrides activation_min and activation_max to (-x, x) for activation plots.")
+    parser.add_argument("--activation_range", type=float, nargs=2, default=[-2.0, 2.0],
+                        help="Lower and upper limits for the activation plot.")
+    parser.add_argument("--learned_activation_file", type=str, default="learned_activation_weights.pt",
+                        help="File path to save/load the learned activation weights.")
+    parser.add_argument("--load_learned_activation", action="store_true",
+                        help="If provided, loads previously saved learned activation weights before training.")
     args = parser.parse_args()
-    if args.activation_x is not None:
-         args.activation_min = -args.activation_x
-         args.activation_max = args.activation_x
     main(args) 
