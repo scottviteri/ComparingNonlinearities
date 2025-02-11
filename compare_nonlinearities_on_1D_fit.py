@@ -237,8 +237,10 @@ class LearnedActivation(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(1, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, 1)
-        self.relu = nn.ReLU()
+        self.fc3 = nn.Linear(hidden_size, hidden_size)
+        self.fc4 = nn.Linear(hidden_size, hidden_size)
+        self.fc5 = nn.Linear(hidden_size, 1)
+        self.relu = nn.GELU()
 
     def forward(self, x):
         # Apply the learned activation elementwise.
@@ -250,9 +252,12 @@ class LearnedActivation(nn.Module):
         out = self.fc2(out)
         out = self.relu(out)
         out = self.fc3(out)
+        out = self.relu(out)
+        out = self.fc4(out)
+        out = self.relu(out)
+        out = self.fc5(out)
         # Restore the original shape.
         return out.view(orig_shape)
-
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     
@@ -459,9 +464,7 @@ def main(args):
                                     color=colors.get(act_name, "green"), linewidth=2)
 
                     ax_act.axvline(x=0, color='gray', linestyle='dotted')
-                    ax_act.set_ylim(args.activation_range[0], args.activation_range[1])
-                    ax_act.set_title(f"{act_name} Activation")
-                    ax_act.legend(fontsize='x-small')
+                    # (No y-axis constraint is set by default; remove set_ylim.)
                     
                     # --- Plot historical predictions in subsequent columns ---
                     for j, (s, y_pred) in enumerate(predictions_history[act_name]):
@@ -504,7 +507,7 @@ def main(args):
                         ax_la.plot(x_act.cpu().numpy(), hist_y,
                                   color=color_event, linestyle="--", linewidth=1)
                     ax_la.axvline(x=0, color='gray', linestyle='dotted')
-                    ax_la.set_ylim(args.activation_range[0], args.activation_range[1])
+                    # (No y-axis constraint is set by default; remove set_ylim.)
                     ax_la.set_title("LearnedActivation Activation")
                     fig_la.tight_layout()
                     fig_la.savefig("fit_1D_plots/learned_activation_plot.png")
